@@ -49,7 +49,7 @@ If you are paid salary 400000 Yen, you can write as
 
 [2012-11-29]$$ salary 400000
 
-moh ignores any line which does not fit these format.
+moh ignores any line which does not fit these formats.
 
 ** Generate a report
 
