@@ -244,7 +244,7 @@ let print_report report =
   Printf.printf  "------------------------------------------------------------\n"
 
  
-let dir = ref ""
+let dir = ref "."
 
 let speclist = [
   "-d", Arg.Set_string dir, "Root directory for accounting data";
