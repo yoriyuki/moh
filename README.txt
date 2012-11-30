@@ -20,7 +20,7 @@ You can contact the author by email yoriyuki.y@gmail.com
 
 The installation is easy.
 
-1. First, install ocaml and make command "ocaml" work from your shell.
+1. First, install ocaml and make the command "ocaml" work from your shell.
 2. Put moh.ml somewhere.  
 
 That's all.
@@ -30,8 +30,8 @@ That's all.
 ** Preparation of Financial Data
 
 To use moh, first you need to prepare your financial data.  moh does
-not require the specific format for them.  You only need to put the
-line as follow to some plain text file in the specified directory or
+not require the specific format for them.  You only need to put 
+lines as follow to some plain text file in a specified directory or
 its subdirectories.
 
 [2012-11-29]$ Wallet -> Expense lunch 7-11 convenience store 700
