@@ -69,7 +69,7 @@ let create_transaction date source target kind comment amount =
 
 let read_transaction_income =
   let pattern = 
-    "^\\[\\([0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]\\)\\]\\$\\$[ \t]+\\([^ \t]+\\)[ \t]+\\([^ \t].+[^ \t][ \t]+\\)?\\([0-9]+\\)$" in
+    "^\\[\\([0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]\\)\\]\\$\\$[ \t]+\\([^ \t]+\\)[ \t]+\\([^ \t][^ \t]*[ \t]+\\)?\\([0-9]+\\)$" in
   let exp = Str.regexp pattern in
   fun line ->
     if Str.string_match exp line 0 then
@@ -86,7 +86,7 @@ let read_transaction_income =
 
 let read_transaction_spending =
   let pattern = 
-    "^\\[\\([0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]\\)\\]\\$[ \t]+\\([^ \t]+\\)[ \t]+\\([^ \t].+[^ \t][ \t]+\\)?\\([0-9]+\\)$" in
+    "^\\[\\([0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]\\)\\]\\$[ \t]+\\([^ \t]+\\)[ \t]+\\([^ \t][^ \t]*[ \t]+\\)?\\([0-9]+\\)$" in
   let exp = Str.regexp pattern in 
   fun line -> 
     if Str.string_match exp line 0 then
@@ -103,7 +103,7 @@ let read_transaction_spending =
 
 let read_transaction =
   let pattern = 
-    "^\\[\\([0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]\\)\\]\\$[ \t]+\\([^ \t]+\\) -> \\([^ \t]+\\)[ \t]+\\([^ \t]+\\)[ \t]+\\([^ \t].+[^ \t][ \t]+\\)?\\([0-9]+\\)$" in
+    "^\\[\\([0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]\\)\\]\\$[ \t]+\\([^ \t]+\\) -> \\([^ \t]+\\)[ \t]+\\([^ \t]+\\)[ \t]+\\([^ \t][^ \t]*[ \t]+\\)?\\([0-9]+\\)$" in
   let exp = Str.regexp pattern in 
   fun line ->
     if Str.string_match exp line 0 then
