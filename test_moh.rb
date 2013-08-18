@@ -40,6 +40,17 @@ class TestBook < Test::Unit::TestCase
     
     assert_equal(200, book.debit_sum{ |t| true })
     assert_equal(0, book.credit_sum{ |t| true })
+
+    child_book = Book.new("Child", book)
+    assert_equal(child_book, book.get_child("Child"))
+    assert_equal(["Test", "Child"], child_book.full_path)
+    assert_equal(child_book, book.get_grandchild(["Child"]))
+
+    t3 = Transaction.new(Date.new(2013,1,3), 'Book1', 
+                         Yen.new(1, -100), 'A')
+    child_book.add_transaction(t3)
+    assert_equal([t1, t2, t3], book.get_transactions)
+    assert_equal(100, book.credit_sum{ |t| true })
   end
 end
 

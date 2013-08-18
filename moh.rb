@@ -51,24 +51,28 @@ end
 
 class Book
   include Comparable
-  private
+  protected
   attr_reader :children, :transactions, :parent
   attr_writer :name, :children, :transactions, :parent
   public
   attr_reader :name
 
   def add_child(book)
-    self.children[book.name] = book
+    if self.children then 
+      self.children[book.name] = book 
+    else
+      self.children = {book.name => book}
+    end
   end
 
   def get_child(name)
-    children[name]
+    self.children ? self.children[name] : nil
   end
 
   def initialize(name, book = nil)
     self.name = name
     self.transactions = []
-    if book then book.add_child(book, self) end
+    if book then book.add_child(self) end
     self.parent = book
   end
 
@@ -81,7 +85,7 @@ class Book
   end
 
   def get_grandchild(path)
-    if path then
+    if path.length > 0 then
       name = path.shift
       get_child(name).get_grandchild(path)
     else
@@ -98,22 +102,25 @@ class Book
   end
 
   def get_transactions
-    children.inject(transactions){ |transactions, book| transactions + book.transacsions }
+    if children then
+      ts = children.inject(transactions){ |ts, pair| ts + pair[1].get_transactions }
+    else
+      ts = transactions
+    end
+    ts.sort!
   end
 
 
   def debit_sum
-    filtered = transactions.find_all { |t| t.amount > 0 && (yield t) }
+    filtered = get_transactions.find_all { |t| t.amount > 0 && (yield t) }
     return filtered.inject(0) { |sum, t| sum + t.amount }
   end
 
   def credit_sum
-    filtered = transactions.find_all { |t| t.amount < 0 && (yield t) }
+    filtered = get_transactions.find_all { |t| t.amount < 0 && (yield t) }
     return filtered.inject(0) { |sum, t| sum - t.amount }
   end
 end
-
-
 
 def dir_scanner(path, suffix)
   Dir.glob("#{File.expand_path(path)}/**{,/*/**}/*.#{suffix}") {|file| yield(file)}
