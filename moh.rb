@@ -9,6 +9,11 @@ class Currency
   def value 
     @amount * @rate
   end
+
+  def -@ 
+    Currency.new(@rate, -@amount)
+  end
+
 end
 
 class Yen < Currency
@@ -84,10 +89,11 @@ class Book
     end
   end
 
-  def get_grandchild(path)
+  def get_grandchild(path, create = false)
     if path.length > 0 then
       name = path.shift
-      get_child(name).get_grandchild(path)
+      get_child(name) ? get_child(name).get_grandchild(path, create) : 
+        (create ? Book.new(name, self) : nil)
     else
       self
     end
@@ -122,6 +128,92 @@ class Book
   end
 end
 
+#IO
+
+##Input
 def dir_scanner(path, suffix)
   Dir.glob("#{File.expand_path(path)}/**{,/*/**}/*.#{suffix}") {|file| yield(file)}
 end
+
+LINE_GENERIC = /^\[(\d{4}-\d{2}-\d{2})\]\$\s+(\S+)\s+(\S+)\s+(.*)\s+(\d+)$/
+LINE_OLD_GENERIC = /^\[(\d{4}-\d{2}-\d{2})\]\$\s+(\S+)\s+->\s+(\S+)\s+(\S+)\s+(.*)\s+(\d+)$/
+LINE_OLD_EXPENSE = /^\[(\d{4}-\d{2}-\d{2})\]\$\s+(\S+)\s+(.*)\s+(\d+)$/
+LINE_OLD_INCOME = /^\[(\d{4}-\d{2}-\d{2})\]\$\$\s+(\S+)\s+(.*)\s+(\d+)$/
+
+class BookReader
+  protected
+  attr_writer :root_book
+  public
+  attr_reader :root_book
+
+  def initialize()
+    self.root_book = Book.new("Root Book")
+  end
+
+  def add_line(date_string, path1, path2, comment, amount)
+    begin
+      date = Date.parse(date_string)
+
+      book1 = self.root_book.get_grandchild(path1, true)
+      book2 = self.root_book.get_grandchild(path2, true)
+      currency = Yen.new(1, amount)
+      
+      t1 = Transaction.new(date, book2, -currency, comment)
+      t2 = Transaction.new(date, book1, currency, comment)
+      
+      book1.add_transaction(t1)
+      book2.add_transaction(t2)
+
+      true
+      
+      rescue ArgumentError
+      false
+      end
+    end
+
+
+  def parse_line_generic(line)
+    md = LINE_GENERIC.match(line)
+    if md then 
+      add_line(md[1], md[2].split(':'), md[3].split(':'), md[4], md[5].to_i)
+    else
+      false
+    end
+  end
+
+  def parse_line_old_generic(line)
+    md = LINE_OLD_GENERIC.match(line)
+    if md then
+      add_line(md[1], [md[2]], [md[3], md[4]], md[5], md[6].to_i)
+    else
+      false
+    end
+  end
+
+  def parse_line_old_expense(line)
+    md = LINE_OLD_EXPENSE.match(line)
+    if md then
+      add_line(md[1], ['Wallet'], ['Expense', md[2]], md[3], md[4].to_i)
+    else
+      false
+    end
+  end
+
+  def parse_line_old_income(line)
+    md = LINE_OLD_INCOME.match(line)
+    if md then
+      add_line(md[1], ['Wallet'], ['Income', md[2]], md[3], md[4].to_i)
+    else
+      false
+    end
+  end
+
+  def parse_line(line) 
+    if parse_line_generic(line) then return 
+    elsif parse_line_old_generic(line) then return
+    elsif parse_line_old_expense(line) then return
+    elsif parse_line_old_income(line) then return
+    else return end
+  end
+end
+

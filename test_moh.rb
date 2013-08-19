@@ -7,6 +7,8 @@ class TestYen < Test::Unit::TestCase
     assert_equal(100, yen.value)
     Yen.current_rate = 10
     assert_equal(1000, yen.current_value)
+
+    assert_equal(-100, (-yen).value)
   end
 end
 
@@ -55,6 +57,57 @@ class TestBook < Test::Unit::TestCase
 end
 
 
+class TestBookReader < Test::Unit::TestCase
+  def test_add_line
+    book_reader = BookReader.new
+    book_reader.add_line('2013-08-13', ['Wallet'], ['Expense', 'life'], 'electricity', 3000)
 
+    assert_equal(3000, book_reader.root_book.debit_sum{ |t| true })
+    assert_equal(3000, book_reader.root_book.credit_sum{ |t| true })
+  end
+
+  def test_parse_line_generic
+    book_reader = BookReader.new
+    book_reader.parse_line_generic('[2013-08-13]$ Wallet Expense:life electricity 3000')
+
+    assert_equal(3000, book_reader.root_book.debit_sum{ |t| true })
+    assert_equal(3000, book_reader.root_book.credit_sum{ |t| true })    
+  end
+
+  def test_parse_line_generic
+    book_reader = BookReader.new
+    book_reader.parse_line_old_generic('[2013-08-13]$ Wallet -> Expense life electricity 3000')
+
+    assert_equal(3000, book_reader.root_book.debit_sum{ |t| true })
+    assert_equal(3000, book_reader.root_book.credit_sum{ |t| true })    
+  end
+
+  def test_parse_line_old_expense
+    book_reader = BookReader.new
+    book_reader.parse_line_old_expense('[2013-08-13]$ life electricity 3000')
+
+    assert_equal(3000, book_reader.root_book.debit_sum{ |t| true })
+    assert_equal(3000, book_reader.root_book.credit_sum{ |t| true })    
+  end
+
+  def test_parse_line_old_income
+    book_reader = BookReader.new
+    book_reader.parse_line_old_income('[2013-08-13]$$ salary XX Inc. 3000')
+    assert_equal(3000, book_reader.root_book.debit_sum{ |t| true })
+    assert_equal(3000, book_reader.root_book.credit_sum{ |t| true })    
+  end
+
+  def test_parse_line
+    book_reader = BookReader.new
+    book_reader.parse_line('[2013-08-13]$ Wallet Expense:life electricity 3000')
+    book_reader.parse_line('[2013-08-13]$ Wallet -> Expense life electricity 3000')
+    book_reader.parse_line('[2013-08-13]$ life electricity 3000')
+    book_reader.parse_line('[2013-08-13]$$ salary XX Inc. 3000')
+    assert_equal(12000, book_reader.root_book.debit_sum{ |t| true })
+    assert_equal(12000, book_reader.root_book.credit_sum{ |t| true })        
+  end
+
+
+end
 
 
