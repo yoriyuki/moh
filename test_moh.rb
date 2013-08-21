@@ -40,8 +40,8 @@ class TestBook < Test::Unit::TestCase
     book.add_transaction(t1)
     book.add_transaction(t2)
     
-    assert_equal(200, book.debit_sum{ |t| true })
-    assert_equal(0, book.credit_sum{ |t| true })
+    assert_equal(0, book.debit_sum{ |t| true })
+    assert_equal(200, book.credit_sum{ |t| true })
 
     child_book = Book.new("Child", book)
     assert_equal(child_book, book.get_child("Child"))
@@ -52,7 +52,9 @@ class TestBook < Test::Unit::TestCase
                          Yen.new(1, -100), 'A')
     child_book.add_transaction(t3)
     assert_equal([t1, t2, t3], book.get_transactions)
-    assert_equal(100, book.credit_sum{ |t| true })
+    assert_equal(100, book.debit_sum{ |t| true })
+
+    assert_equal(-100, book.balance)
   end
 end
 
@@ -65,6 +67,15 @@ class TestBookReader < Test::Unit::TestCase
     assert_equal(3000, book_reader.root_book.debit_sum{ |t| true })
     assert_equal(3000, book_reader.root_book.credit_sum{ |t| true })
   end
+
+  def test_set_balance
+    book_reader = BookReader.new
+    book_reader.add_line('2013-08-13', ['Wallet'], ['Expense', 'life'], 'electricity', 3000)
+    book_reader.set_balance('2013-08-14', ['Wallet'], 0)
+
+    assert_equal(0, book_reader.root_book.balance)
+  end
+
 
   def test_parse_line_generic
     book_reader = BookReader.new
@@ -99,15 +110,27 @@ class TestBookReader < Test::Unit::TestCase
 
   def test_parse_line
     book_reader = BookReader.new
+    book_reader.parse_line('[2013-08-01]$= Wallet 6000')
     book_reader.parse_line('[2013-08-13]$ Wallet Expense:life electricity 3000')
     book_reader.parse_line('[2013-08-13]$ Wallet -> Expense life electricity 3000')
     book_reader.parse_line('[2013-08-13]$ life electricity 3000')
     book_reader.parse_line('[2013-08-13]$$ salary XX Inc. 3000')
-    assert_equal(12000, book_reader.root_book.debit_sum{ |t| true })
-    assert_equal(12000, book_reader.root_book.credit_sum{ |t| true })        
+    assert_equal(18000, book_reader.root_book.debit_sum{ |t| true })
+    assert_equal(18000, book_reader.root_book.credit_sum{ |t| true })
   end
-
-
 end
 
-
+class TestBookWriter < Test::Unit::TestCase
+  def test_print  
+    book_reader = BookReader.new
+    book_reader.parse_line('[2013-08-01]$= Wallet 6000')
+    book_reader.parse_line('[2013-08-13]$ Wallet Expense:life electricity 3000')
+    book_reader.parse_line('[2013-08-13]$ Wallet -> Expense life electricity 3000')
+    book_reader.parse_line('[2013-08-13]$ life electricity 3000')
+    book_reader.parse_line('[2013-08-13]$$ salary XX Inc. 3000')
+    book = book_reader.root_book
+    
+    book_writer = BookWriter.new(book)
+    book_writer.print(Date.new(2013, 01, 01), Date.new(2013, 12, 31))
+  end
+end
