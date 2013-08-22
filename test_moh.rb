@@ -1,17 +1,6 @@
 require 'moh'
 require 'test/unit'
 
-class TestYen < Test::Unit::TestCase
-  def test_simple
-    yen = Yen.new(1, 100)
-    assert_equal(100, yen.value)
-    Yen.current_rate = 10
-    assert_equal(1000, yen.current_value)
-
-    assert_equal(-100, (-yen).value)
-  end
-end
-
 class TestTransaction < Test::Unit::TestCase
   def test_compare 
     t1 = Transaction.new(Date.new(2013,1,1), 'Book1', 100, 'A')
@@ -54,9 +43,6 @@ class TestBook < Test::Unit::TestCase
     assert_equal(100, book.debit_sum{ |t| true })
     assert_equal(-100, book.balance)
 
-    book.set_rate(Date.new(2013, 1, 1), 0)
-    book.set_rate(Date.new(2013, 8, 1), 2)
-    assert_equal(-200, book.balance)
   end
 end
 

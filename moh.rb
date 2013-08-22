@@ -1,32 +1,5 @@
 require 'date'
 
-class Currency
-  def initialize(rate,  amount)
-    @rate = rate
-    @amount = amount
-  end
-
-  def value 
-    @amount * @rate
-  end
-
-  def -@ 
-    Currency.new(@rate, -@amount)
-  end
-end
-
-class Yen < Currency
-  @@current_rate = 1
-
-  def current_value 
-    @amount * @@current_rate
-  end
-
-  def Yen.current_rate=(rate) 
-    @@current_rate = rate
-  end
-end
-
 class Transaction
   include Comparable
   private
@@ -56,8 +29,8 @@ end
 class Book
   include Comparable
   protected
-  attr_reader :parent, :children, :rate, :rate_date
-  attr_writer :name, :children, :transactions, :parent, :rate, :rate_date
+  attr_reader :parent, :children
+  attr_writer :name, :children, :transactions, :parent
   public
   attr_reader :name, :transactions
 
@@ -77,12 +50,11 @@ class Book
     if self.children then self.children.map {|name, b| b} else [] end
   end
 
-  def initialize(name, book = nil, rate = 1)
+  def initialize(name, book = nil)
     self.name = name
     self.transactions = []
     if book then book.add_child(self) end
     self.parent = book
-    self.rate = rate
   end
 
   def full_path
@@ -98,7 +70,7 @@ class Book
       path = path.dup
       name = path.shift
       get_child(name) ? get_child(name).get_grandchild(path, create) : 
-        (create ? Book.new(name, self, self.rate).get_grandchild(path, create) : nil)
+        (create ? Book.new(name, self).get_grandchild(path, create) : nil)
     else
       self
     end
@@ -122,7 +94,7 @@ class Book
     end
 
     filtered = transactions.find_all { |t| t.amount < 0 && (yield t) }
-    return filtered.inject(sum) { |sum, t| sum - t.amount * self.rate }
+    return filtered.inject(sum) { |sum, t| sum - t.amount}
   end
 
   def credit_sum
@@ -135,7 +107,7 @@ class Book
     end
 
     filtered = transactions.find_all { |t| t.amount > 0 && (yield t) }
-    return filtered.inject(sum) { |sum, t| sum + t.amount * self.rate }
+    return filtered.inject(sum) { |sum, t| sum + t.amount}
   end
 
   def balance(date=nil)
@@ -143,16 +115,6 @@ class Book
     credit_sum = credit_sum {|t| t.is_in_dates(nil, date)}
     debit_sum - credit_sum    
   end
-
-  def set_rate(date, rate)
-    if (not self.rate_date) || self.rate_date >= rate_date then
-      self.rate = rate
-      if children then
-        children.each{|name, b| b.set_rate(date, rate) }
-      end
-    end
-  end
-
 end
 
 #IO
@@ -167,7 +129,6 @@ LINE_OLD_GENERIC = /^\[(\d{4}-\d{2}-\d{2})\]\$\s+(\S+)\s+->\s+(\S+)\s+(\S+)\s+(.
 LINE_OLD_EXPENSE = /^\[(\d{4}-\d{2}-\d{2})\]\$\s+(\S+)\s+(.*)\s+(\d+)$/
 LINE_OLD_INCOME = /^\[(\d{4}-\d{2}-\d{2})\]\$\$\s+(\S+)\s+(.*)\s+(\d+)$/
 LINE_BALANCE = /^\[(\d{4}-\d{2}-\d{2})\]\$=\s+(\S+)\s+(-?\d+)$/
-LINE_SET_RATE = /^\[(\d{4}-\d{2}-\d{2})\]\$%\s+(\S+)\s+(-?\d+)$/
 
 class BookReader
   protected
@@ -215,18 +176,6 @@ class BookReader
       add_line(date_string, path, ['Expense', 'Unknown'], 'Unknown', -diff)
     end
 
-    true
-  end
-
-  def set_rate(date_string, path, rate)
-    begin
-      date = Date.parse(date_string)
-      rescue ArgumentError
-      return false
-    end
-    
-    book = self.root_book.get_grandchild(path, true)
-    book.set_rate(date, rate)
     true
   end
 
