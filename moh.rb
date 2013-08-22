@@ -30,14 +30,14 @@ end
 class Transaction
   include Comparable
   private
-  attr_writer :date, :target, :sort, :comment, :currency
+  attr_writer :date, :target, :sort, :amount, :comment
   public 
-  attr_reader :date, :target, :sort, :comment, :currency
+  attr_reader :date, :target, :sort, :amount, :comment
 
-  def initialize(date, target, currency, comment)
+  def initialize(date, target, amount, comment)
     self.date = date
     self.target = target
-    self.currency = currency
+    self.amount = amount
     self.comment = comment
   end
 
@@ -48,10 +48,6 @@ class Transaction
       self.comment <=> other.comment
   end
 
-  def amount
-    self.currency.value
-  end
-
   def is_in_dates(date1, date2)
     (not date1 or date >= date1) && (not date2 or date <= date2)
   end
@@ -60,8 +56,8 @@ end
 class Book
   include Comparable
   protected
-  attr_reader :parent, :children
-  attr_writer :name, :children, :transactions, :parent
+  attr_reader :parent, :children, :rate, :rate_date
+  attr_writer :name, :children, :transactions, :parent, :rate, :rate_date
   public
   attr_reader :name, :transactions
 
@@ -81,11 +77,12 @@ class Book
     if self.children then self.children.map {|name, b| b} else [] end
   end
 
-  def initialize(name, book = nil)
+  def initialize(name, book = nil, rate = 1)
     self.name = name
     self.transactions = []
     if book then book.add_child(self) end
     self.parent = book
+    self.rate = rate
   end
 
   def full_path
@@ -101,7 +98,7 @@ class Book
       path = path.dup
       name = path.shift
       get_child(name) ? get_child(name).get_grandchild(path, create) : 
-        (create ? Book.new(name, self).get_grandchild(path, create) : nil)
+        (create ? Book.new(name, self, self.rate).get_grandchild(path, create) : nil)
     else
       self
     end
@@ -115,24 +112,30 @@ class Book
     transactions << transaction
   end
 
-  def get_transactions
-    if children then
-      ts = children.inject(transactions){ |ts, pair| ts + pair[1].get_transactions }
-    else
-      ts = transactions
-    end
-    ts.sort!
-  end
-
-
   def debit_sum
-    filtered = get_transactions.find_all { |t| t.amount < 0 && (yield t) }
-    return filtered.inject(0) { |sum, t| sum - t.amount }
+    if children then
+      sum = children.inject(0) do |sum, pair| 
+        sum + pair[1].debit_sum { |t| t.amount < 0 && (yield t) }
+      end
+    else
+      sum = 0
+    end
+
+    filtered = transactions.find_all { |t| t.amount < 0 && (yield t) }
+    return filtered.inject(sum) { |sum, t| sum - t.amount * self.rate }
   end
 
   def credit_sum
-    filtered = get_transactions.find_all { |t| t.amount > 0 && (yield t) }
-    return filtered.inject(0) { |sum, t| sum + t.amount }
+    if children then
+      sum = children.inject(0) do |sum, pair| 
+        sum + pair[1].credit_sum { |t| t.amount > 0 && (yield t) }
+      end
+    else
+      sum = 0
+    end
+
+    filtered = transactions.find_all { |t| t.amount > 0 && (yield t) }
+    return filtered.inject(sum) { |sum, t| sum + t.amount * self.rate }
   end
 
   def balance(date=nil)
@@ -140,6 +143,16 @@ class Book
     credit_sum = credit_sum {|t| t.is_in_dates(nil, date)}
     debit_sum - credit_sum    
   end
+
+  def set_rate(date, rate)
+    if (not self.rate_date) || self.rate_date >= rate_date then
+      self.rate = rate
+      if children then
+        children.each{|name, b| b.set_rate(date, rate) }
+      end
+    end
+  end
+
 end
 
 #IO
@@ -154,6 +167,7 @@ LINE_OLD_GENERIC = /^\[(\d{4}-\d{2}-\d{2})\]\$\s+(\S+)\s+->\s+(\S+)\s+(\S+)\s+(.
 LINE_OLD_EXPENSE = /^\[(\d{4}-\d{2}-\d{2})\]\$\s+(\S+)\s+(.*)\s+(\d+)$/
 LINE_OLD_INCOME = /^\[(\d{4}-\d{2}-\d{2})\]\$\$\s+(\S+)\s+(.*)\s+(\d+)$/
 LINE_BALANCE = /^\[(\d{4}-\d{2}-\d{2})\]\$=\s+(\S+)\s+(-?\d+)$/
+LINE_SET_RATE = /^\[(\d{4}-\d{2}-\d{2})\]\$%\s+(\S+)\s+(-?\d+)$/
 
 class BookReader
   protected
@@ -171,10 +185,9 @@ class BookReader
 
       book1 = self.root_book.get_grandchild(path1, true)
       book2 = self.root_book.get_grandchild(path2, true)
-      currency = Yen.new(1, amount)
       
-      t1 = Transaction.new(date, book2, currency, comment)
-      t2 = Transaction.new(date, book1, -currency, comment)
+      t1 = Transaction.new(date, book2, amount, comment)
+      t2 = Transaction.new(date, book1, -amount, comment)
       
       book1.add_transaction(t1)
       book2.add_transaction(t2)
@@ -205,6 +218,17 @@ class BookReader
     true
   end
 
+  def set_rate(date_string, path, rate)
+    begin
+      date = Date.parse(date_string)
+      rescue ArgumentError
+      return false
+    end
+    
+    book = self.root_book.get_grandchild(path, true)
+    book.set_rate(date, rate)
+    true
+  end
 
   def parse_line_generic(line)
     md = LINE_GENERIC.match(line)

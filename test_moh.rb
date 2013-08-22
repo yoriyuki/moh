@@ -14,11 +14,11 @@ end
 
 class TestTransaction < Test::Unit::TestCase
   def test_compare 
-    t1 = Transaction.new(Date.new(2013,1,1), 'Book1', Yen.new(1, 100), 'A')
-    t2 = Transaction.new(Date.new(2013,1,2), 'Book1', Yen.new(1, 100), 'A')
-    t3 = Transaction.new(Date.new(2013,1,2), 'Book2', Yen.new(1, 100), 'A')
-    t4 = Transaction.new(Date.new(2013,1,2), 'Book2', Yen.new(1, 200), 'A')
-    t5 = Transaction.new(Date.new(2013,1,2), 'Book2', Yen.new(1, 200), 'B')
+    t1 = Transaction.new(Date.new(2013,1,1), 'Book1', 100, 'A')
+    t2 = Transaction.new(Date.new(2013,1,2), 'Book1', 100, 'A')
+    t3 = Transaction.new(Date.new(2013,1,2), 'Book2', 100, 'A')
+    t4 = Transaction.new(Date.new(2013,1,2), 'Book2', 200, 'A')
+    t5 = Transaction.new(Date.new(2013,1,2), 'Book2', 200, 'B')
 
     assert_equal(true, t1 == t1)
     assert_equal(true, t1 < t2)
@@ -32,9 +32,9 @@ class TestBook < Test::Unit::TestCase
   
   def test_simple
     t1 = Transaction.new(Date.new(2013,1,1), 'Book1', 
-                         Yen.new(1, 100), 'A')
+                         100, 'A')
     t2 = Transaction.new(Date.new(2013,1,2), 'Book1', 
-                         Yen.new(1, 100), 'A')
+                         100, 'A')
     
     book = Book.new("Test")
     book.add_transaction(t1)
@@ -49,12 +49,14 @@ class TestBook < Test::Unit::TestCase
     assert_equal(child_book, book.get_grandchild(["Child"]))
 
     t3 = Transaction.new(Date.new(2013,1,3), 'Book1', 
-                         Yen.new(1, -100), 'A')
+                         -100, 'A')
     child_book.add_transaction(t3)
-    assert_equal([t1, t2, t3], book.get_transactions)
     assert_equal(100, book.debit_sum{ |t| true })
-
     assert_equal(-100, book.balance)
+
+    book.set_rate(Date.new(2013, 1, 1), 0)
+    book.set_rate(Date.new(2013, 8, 1), 2)
+    assert_equal(-200, book.balance)
   end
 end
 
