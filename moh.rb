@@ -192,7 +192,8 @@ class BookReader
   def parse_line_old_generic(line)
     md = LINE_OLD_GENERIC.match(line)
     if md then
-      add_line(md[1], [md[2]], [md[3], md[4]], md[5], md[6].to_i)
+      target = if md[4] == "" then [md[3]] else [md[3], md[4]] end
+      add_line(md[1], [md[2]], target, md[5], md[6].to_i)
     else
       false
     end
@@ -227,13 +228,14 @@ class BookReader
 
   def parse_SMBC_line(line)
     columns = CSV.parse_line(line)
+    if columns[0] == nil then return end
 
     date_string = (Calendar('Gregorian')  ^ when?(columns[0])).to_s
 
     if columns[1] == nil && columns[2].to_i > 0 then
-      add_line(date_string, ['Income', 'unknown'], ['SMVC'], columns[3], columns[2].to_i)
+      add_line(date_string, ['Income', 'unknown'], ['SMBC'], columns[3], columns[2].to_i)
     elsif columns[1].to_i > 0
-      add_line(date_string, ['SMVC'], ['Expense', 'unknown'], columns[3], columns[1].to_i)
+      add_line(date_string, ['SMBC'], ['Expense', 'unknown'], columns[3], columns[1].to_i)
     end
     false
   end
@@ -242,7 +244,7 @@ class BookReader
     columns = CSV.parse_line(line)
 
     if columns[2].to_i != 0 then
-      add_line(columns[0], ['SMVC_VISA'], ['Expense', 'unknown'], columns[1], columns[2].to_i)
+      add_line(columns[0], ['SMBC_VISA'], ['Expense', 'unknown'], columns[1], columns[2].to_i)
     end
   end
 
@@ -308,7 +310,7 @@ print_transactions = false
 opt.on('-d [dir]'){|dir| howm_dir = dir}
 opt.on('--howm_suffix=[suffix]'){ |suffix| howm_suffix=suffix }
 opt.on('--smbc_dir=[dir]'){|dir| smbc_dir = dir}
-opt.on('--smbcVISA_dir=[dir]'){ |dir| smbc_visa_dir = dir }
+opt.on('--smbc_visa_dir=[dir]'){ |dir| smbc_visa_dir = dir }
 opt.on('-s', '--summary'){ |b| print_summary = true }
 opt.on('-t', '--transactions'){ |b| print_transactions = true }
 
@@ -328,16 +330,20 @@ if howm_dir then
 end
 
 if smbc_dir then
-  dir_scanner(smbc_dir, 'cvs') do |path|
-    file.readline
-    file.each{ |line| book_reader.parse_SMBC_line(line)}
+  dir_scanner(smbc_dir, 'csv') do |path|
+    File.open(path) do |file|
+      file.readline
+      file.each{ |line| book_reader.parse_SMBC_line(line)}
+    end
   end
 end
 
 if smbc_visa_dir then
-  dir_scanner(smbc_visa_dir, 'cvs') do |file|
-    file.readline
-    file.each{ |line| book_reader.parse_SMBCVISA_line(line)}
+  dir_scanner(smbc_visa_dir, 'csv') do |path|
+    File.open(path) do |file|
+      file.readline
+      file.each{ |line| book_reader.parse_SMBCVISA_line(line)}
+    end
   end
 end
 
