@@ -1,4 +1,8 @@
 require 'date'
+require 'rubygems'
+require 'when_exe'
+include When
+require 'csv'
 
 class Transaction
   include Comparable
@@ -224,6 +228,27 @@ class BookReader
     end
   end
 
+  def parse_SMBC_line(line)
+    columns = CSV.parse_line(line)
+
+    date_string = (Calendar('Gregorian')  ^ when?(columns[0])).to_s
+
+    if columns[1] == nil && columns[2].to_i > 0 then
+      add_line(date_string, ['Income', 'unknown'], ['SMVC'], columns[3], columns[2].to_i)
+    elsif columns[1].to_i > 0
+      add_line(date_string, ['SMVC'], ['Expense', 'unknown'], columns[3], columns[1].to_i)
+    end
+    false
+  end
+
+  def parse_SMBCVISA_line(line)
+    columns = CSV.parse_line(line)
+
+    if columns[2].to_i != 0 then
+      add_line(columns[0], ['SMVC_VISA'], ['Expense', 'unknown'], columns[1], columns[2].to_i)
+    end
+  end
+
   def parse_line(line) 
     if parse_line_old_generic(line) then return 
     elsif parse_line_generic(line) then return
@@ -274,3 +299,4 @@ class BookWriter
     print_transactions(date1, date2)
   end
 end
+
