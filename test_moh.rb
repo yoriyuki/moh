@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 require 'moh'
 require 'test/unit'
 
@@ -94,6 +95,20 @@ class TestBookReader < Test::Unit::TestCase
     book_reader.parse_line_old_income('[2013-08-13]$$ salary XX Inc. 3000')
     assert_equal(3000, book_reader.root_book.debit_sum{ |t| true })
     assert_equal(3000, book_reader.root_book.credit_sum{ |t| true })    
+  end
+
+  def test_parse_SMVC_line
+    book_reader = BookReader.new
+    book_reader.parse_SMBC_line("H25.07.01,105,,\"プレミアムサービス利用料\",2182498\r\n")
+    book_reader.parse_SMBC_line("H25.07.18,,352530,\"給料振込\",2344696\r\n")
+    assert_equal(352635, book_reader.root_book.debit_sum{ |t| true })
+    assert_equal(352635, book_reader.root_book.credit_sum{ |t| true })    
+  end
+
+  def test_parse_SMVCVISA_line
+    book_reader = BookReader.new
+    book_reader.parse_SMBCVISA_line("2013/05/31,ソフトバンクＭ,12433,１,１,12433\r\n")
+    assert_equal(12433, book_reader.root_book.credit_sum{ |t| true })    
   end
 
   def test_parse_line
