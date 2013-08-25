@@ -3,6 +3,7 @@ require 'rubygems'
 require 'when_exe'
 include When
 require 'csv'
+require 'optparse'
 
 class Transaction
   include Comparable
@@ -85,7 +86,7 @@ class Book
   end
 
   def add_transaction(transaction)
-    transactions << transaction
+    transactions << transaction    
   end
 
   def debit_sum
@@ -124,15 +125,11 @@ end
 #IO
 
 ##Input
-def dir_scanner(path, suffix)
-  Dir.glob("#{File.expand_path(path)}/**{,/*/**}/*.#{suffix}") {|file| yield(file)}
-end
-
-LINE_GENERIC = /^\[(\d{4}-\d{2}-\d{2})\]\$\s+(\S+)\s+(\S+)\s+(.*)\s+(\d+)$/
-LINE_OLD_GENERIC = /^\[(\d{4}-\d{2}-\d{2})\]\$\s+(\S+)\s+->\s+(\S+)\s+(\S+)\s+(.*)\s+(\d+)$/
-LINE_OLD_EXPENSE = /^\[(\d{4}-\d{2}-\d{2})\]\$\s+(\S+)\s+(.*)\s+(\d+)$/
-LINE_OLD_INCOME = /^\[(\d{4}-\d{2}-\d{2})\]\$\$\s+(\S+)\s+(.*)\s+(\d+)$/
-LINE_BALANCE = /^\[(\d{4}-\d{2}-\d{2})\]\$=\s+(\S+)\s+(-?\d+)$/
+LINE_GENERIC = /^\[(\d{4}-\d{2}-\d{2})\]\$\s+(\S+)\s+(\S+)\s+(.*\S)\s+(\d+)\s*$/
+LINE_OLD_GENERIC = /^\[(\d{4}-\d{2}-\d{2})\]\$\s+(\S+)\s+->\s+(\S+)\s+(\S*)\s+(.*\S)\s+(\d+)\s*$/
+LINE_OLD_EXPENSE = /^\[(\d{4}-\d{2}-\d{2})\]\$\s+(\S+)\s+(.*\S)\s+(\d+)\s*$/
+LINE_OLD_INCOME = /^\[(\d{4}-\d{2}-\d{2})\]\$\$\s+(\S+)\s+(.*\S)\s+(\d+)\s*$/
+LINE_BALANCE = /^\[(\d{4}-\d{2}-\d{2})\]\$=\s+(\S+)\s+(-?\d+)\s*$/
 
 class BookReader
   protected
@@ -274,12 +271,6 @@ class BookWriter
     puts "[#{t.date.to_s}]$\t#{fqdn}\t#{fqdn(t.target)}\t#{t.comment}\t#{t.amount.to_s}"
   end
 
-  def print_transactions(date1=nil, date2=nil)
-    transactions = self.book.transactions.find_all{|t| t.is_in_dates(date1, date2)}
-    transactions.sort.each{|t| if t.amount > 0 then print_transaction(t) end}
-    self.book.get_children.sort.each{|b| BookWriter.new(b).print_transactions(date1, date2)}
-  end
-
   public
   attr_reader :book
 
@@ -294,9 +285,71 @@ class BookWriter
     book.get_children.sort.each{|b| BookWriter.new(b).print_summary(date1, date2)}
   end
 
-  def print(date1, date2)
-    print_summary(date1, date2)
-    print_transactions(date1, date2)
+  def print_transactions(date1=nil, date2=nil)
+    transactions = self.book.transactions.find_all{|t| t.is_in_dates(date1, date2)}
+    transactions.sort.each{|t| print_transaction(t)}
+    self.book.get_children.sort.each{|b| BookWriter.new(b).print_transactions(date1, date2)}
   end
+end
+
+## Main
+puts 'moh -- simple, commandline-based accounting software'
+puts '(C) 2012, 2013: Yoriyuki Yamagata'
+puts 'See LICENSE.txt for the licence.'
+opt = OptionParser.new
+book_reader = BookReader.new
+howm_dir = nil
+howm_suffix = 'howm'
+smbc_dir = nil
+smbc_visa_dir = nil
+print_summary = false
+print_transactions = false
+
+opt.on('-d [dir]'){|dir| howm_dir = dir}
+opt.on('--howm_suffix=[suffix]'){ |suffix| howm_suffix=suffix }
+opt.on('--smbc_dir=[dir]'){|dir| smbc_dir = dir}
+opt.on('--smbcVISA_dir=[dir]'){ |dir| smbc_visa_dir = dir }
+opt.on('-s', '--summary'){ |b| print_summary = true }
+opt.on('-t', '--transactions'){ |b| print_transactions = true }
+
+values = []
+opt.order!{ |v| values << v }
+
+def dir_scanner(path, suffix)
+  Dir.glob("#{File.expand_path(path)}/**{,/*/**}/*.#{suffix}") {|path| yield(path)}
+end
+
+if howm_dir then 
+  if not howm_suffix then howm_suffix = 'howm' end
+
+  dir_scanner(howm_dir, howm_suffix) do |path|
+    File.open(path){ |file| file.each{|line| book_reader.parse_line(line)}}
+  end
+end
+
+if smbc_dir then
+  dir_scanner(smbc_dir, 'cvs') do |path|
+    file.readline
+    file.each{ |line| book_reader.parse_SMBC_line(line)}
+  end
+end
+
+if smbc_visa_dir then
+  dir_scanner(smbc_visa_dir, 'cvs') do |file|
+    file.readline
+    file.each{ |line| book_reader.parse_SMBCVISA_line(line)}
+  end
+end
+
+book_writer = BookWriter.new(book_reader.root_book.get_grandchild(values[0].split(':')))
+
+if print_summary then
+  puts '*Summary'
+  book_writer.print_summary(Date.parse(values[1]), Date.parse(values[2]))
+end
+
+if print_transactions then
+  puts '*Transactions'
+  book_writer.print_transactions(Date.parse(values[1]), Date.parse(values[2]))
 end
 
