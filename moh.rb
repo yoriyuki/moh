@@ -300,10 +300,10 @@ puts '(C) 2012, 2013: Yoriyuki Yamagata'
 puts 'See LICENSE.txt for the licence.'
 opt = OptionParser.new
 book_reader = BookReader.new
-howm_dir = nil
+howm_dir = Dir.pwd
 howm_suffix = 'howm'
-smbc_dir = nil
-smbc_visa_dir = nil
+smbc_dir = Dir.pwd
+smbc_visa_dir = Dir.pwd
 print_summary = false
 print_transactions = false
 
