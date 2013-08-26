@@ -20,8 +20,12 @@ You can contact the author by email yoriyuki.y@gmail.com
 
 The installation is easy.
 
-1. First, install ocaml and make the command "ocaml" work from your shell.
-2. Put moh.ml somewhere.  
+1. First, install ruby.  moh was developed using ruby 1.8.7, so if you are using Mac OS X 10.8, you do not need to do anything.
+
+2. Next, install when_exe from ruby gem.
+$ sudo gem install when_exe
+
+2. Put moh.rb somewhere.  
 
 That's all.
 
@@ -34,36 +38,48 @@ not require the specific format for them.  You only need to put
 lines as follow to some plain text file in a specified directory or
 its subdirectories.
 
-[2012-11-29]$ Wallet -> Expense lunch 7-11 convenience store 700
+[2012-11-29]$ Wallet  Expense 7-11 convenience store 700
 
 This means that 700 yen/doller/euro... of currency are transferred
-from the account "Wallet" to "Expense", and its category is "lunch".
-"7-11 convenience store" is a comment.
+from the account "Wallet" to "Expense".
+"7-11 convenience store" is a comment.  
 
-Wallet, Expense and Income are special accounts.  The above
-transaction can be written as
+Accounts can form hierarchies.  For example, you can write Expense:Lunch to indicate the nested accounts.
 
-[2012-11-29]$ lunch 7-11 convenience store 700
+[2012-11-29]$ Wallet  Expense:Lunch 7-11 convenience store 700
 
-If you are paid salary 400000 Yen, you can write as
+Transactions of Expense:Lunch are counted as those of Expense and Expense:Lunch simultaneously.
 
-[2012-11-29]$$ salary 400000
+If you know how much money in an account, you can reset the balance of the account.
 
-moh ignores any line which does not fit these formats.
+[2013-08-01]$= Wallet 6000
 
-** Generate a report
+This set the balance of Wallet 6000.  If this is not equal to the balance calculated, moh automatically inserts the transaction to Expense:Unknown or Income:Unknown.
+
+OCaml version of moh uses different formats.  They are supported but using them are strongly discouraged.
+
+moh ignores any line which does not fit this format.
+
+** Generate a summary
 
 Then, you can create a report by invoking moh.  If you put the data
 into the directory XXX or its subdirectories, you can obtain the
 annual report of Wallet by
  
-ocaml moh.ml -d XXX Wallet 20120101 20121231
+$ ruby moh.rb -d XXX -s Wallet 20120101 20121231
 
-If you omit -d, the current directory is assumed.
+If you omit -d, the current directory is assumed.  You can change the suffix of files which moh searches.  If you use -t instead of -s, moh outputs all transaction between given dates.
+
+The default behavior is to search *.howm files.  But you can change the suffix of files which contain financial data.
+$ ruby moh.rb -d XXX --howm_suffix=txt -s Wallet 20120101 20121231
+
+moh also supports csv files from Mitsui Sumitomo Bank
+$ ruby moh.rb --smbc_dir=XXX -s -t Wallet 20120101 20121231
+and Mitsui Sumitomo VISA card.
+$ ruby moh.rb --smbc_visa_dir XXX -s Wallet 20120101 20121231
 
 * Future plan
 
-- Balance sheet
 - Different currency and other price changing materials.
 
 Enjoy!
