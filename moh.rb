@@ -125,10 +125,10 @@ end
 #IO
 
 ##Input
-LINE_GENERIC = /^\[(\d{4}-\d{2}-\d{2})\]\$\s+(\S+)\s+(\S+)\s+(.*\S)\s+(\d+)\s*$/
-LINE_OLD_GENERIC = /^\[(\d{4}-\d{2}-\d{2})\]\$\s+(\S+)\s+->\s+(\S+)\s+(\S*)\s+(.*\S)\s+(\d+)\s*$/
-LINE_OLD_EXPENSE = /^\[(\d{4}-\d{2}-\d{2})\]\$\s+(\S+)\s+(.*\S)\s+(\d+)\s*$/
-LINE_OLD_INCOME = /^\[(\d{4}-\d{2}-\d{2})\]\$\$\s+(\S+)\s+(.*\S)\s+(\d+)\s*$/
+LINE_GENERIC = /^\[(\d{4}-\d{2}-\d{2})\]\$\s+(\S+)\s+(\S+)\s+(.*\S?)\s+(\d+)\s*$/
+LINE_OLD_GENERIC = /^\[(\d{4}-\d{2}-\d{2})\]\$\s+(\S+)\s+->\s+(\S+)\s+(\S*)\s+(.*\S?)\s+(\d+)\s*$/
+LINE_OLD_EXPENSE = /^\[(\d{4}-\d{2}-\d{2})\]\$\s+(\S+)\s+(.*\S?)\s+(\d+)\s*$/
+LINE_OLD_INCOME = /^\[(\d{4}-\d{2}-\d{2})\]\$\$\s+(\S+)\s+(.*\S?)\s+(\d+)\s*$/
 LINE_BALANCE = /^\[(\d{4}-\d{2}-\d{2})\]\$=\s+(\S+)\s+(-?\d+)\s*$/
 
 class BookReader
@@ -250,9 +250,9 @@ class BookReader
 
   def parse_line(line) 
     if parse_line_old_generic(line) then return 
-    elsif parse_line_generic(line) then return
     elsif parse_line_old_expense(line) then return
     elsif parse_line_old_income(line) then return
+    elsif parse_line_generic(line) then return
     elsif parse_line_set_balance(line) then return
     else return end
   end
