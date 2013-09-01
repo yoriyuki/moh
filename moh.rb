@@ -6,7 +6,7 @@ require 'csv'
 require 'optparse'
 
 class Transaction
-  include Comparable
+   include Comparable
   private
   attr_writer :date, :target, :sort, :amount, :comment
   public 
@@ -300,10 +300,10 @@ puts '(C) 2012, 2013: Yoriyuki Yamagata'
 puts 'See LICENSE.txt for the licence.'
 opt = OptionParser.new
 book_reader = BookReader.new
-howm_dir = Dir.pwd
+howm_dir = nil
 howm_suffix = 'howm'
-smbc_dir = Dir.pwd
-smbc_visa_dir = Dir.pwd
+smbc_dir = nil
+smbc_visa_dir = nil
 print_summary = false
 print_transactions = false
 
@@ -322,8 +322,6 @@ def dir_scanner(path, suffix)
 end
 
 if howm_dir then 
-  if not howm_suffix then howm_suffix = 'howm' end
-
   dir_scanner(howm_dir, howm_suffix) do |path|
     File.open(path){ |file| file.each{|line| book_reader.parse_line(line)}}
   end
