@@ -125,10 +125,10 @@ end
 #IO
 
 ##Input
-LINE_GENERIC = /^\[(\d{4}-\d{2}-\d{2})\]\$\s+(\S+)\s+(\S+)\s+(.*\S)\s+(\d+)\s*$/
-LINE_OLD_GENERIC = /^\[(\d{4}-\d{2}-\d{2})\]\$\s+(\S+)\s+->\s+(\S+)\s+(\S*)\s+(.*\S)\s+(\d+)\s*$/
-LINE_OLD_EXPENSE = /^\[(\d{4}-\d{2}-\d{2})\]\$\s+(\S+)\s+(.*\S)\s+(\d+)\s*$/
-LINE_OLD_INCOME = /^\[(\d{4}-\d{2}-\d{2})\]\$\$\s+(\S+)\s+(.*\S)\s+(\d+)\s*$/
+LINE_GENERIC = /^\[(\d{4}-\d{2}-\d{2})\]\$\s+(\S+)\s+(\S+)\s+(.*\S?)\s+(\d+)\s*$/
+LINE_OLD_GENERIC = /^\[(\d{4}-\d{2}-\d{2})\]\$\s+(\S+)\s+->\s+(\S+)\s+(\S*)\s+(.*\S?)\s+(\d+)\s*$/
+LINE_OLD_EXPENSE = /^\[(\d{4}-\d{2}-\d{2})\]\$\s+(\S+)\s+(.*\S?)\s+(\d+)\s*$/
+LINE_OLD_INCOME = /^\[(\d{4}-\d{2}-\d{2})\]\$\$\s+(\S+)\s+(.*\S?)\s+(\d+)\s*$/
 LINE_BALANCE = /^\[(\d{4}-\d{2}-\d{2})\]\$=\s+(\S+)\s+(-?\d+)\s*$/
 
 class BookReader
@@ -249,11 +249,15 @@ class BookReader
   end
 
   def parse_line(line) 
-    if parse_line_old_generic(line) then return 
-    elsif parse_line_generic(line) then return
-    elsif parse_line_old_expense(line) then return
-    elsif parse_line_old_income(line) then return
+    if parse_line_generic(line) then return
     elsif parse_line_set_balance(line) then return
+    else return end
+  end
+
+  def parse_old_line(line)
+    if parse_line_old_generic(line) then return 
+    elsif parse_line_old_income(line) then return
+    elsif parse_line_old_expense(line) then return
     else return end
   end
 end
@@ -306,6 +310,7 @@ smbc_dir = nil
 smbc_visa_dir = nil
 print_summary = false
 print_transactions = false
+old_mode = false
 
 opt.on('-d [dir]'){|dir| howm_dir = dir}
 opt.on('--howm_suffix=[suffix]'){ |suffix| howm_suffix=suffix }
@@ -313,6 +318,7 @@ opt.on('--smbc_dir=[dir]'){|dir| smbc_dir = dir}
 opt.on('--smbc_visa_dir=[dir]'){ |dir| smbc_visa_dir = dir }
 opt.on('-s', '--summary'){ |b| print_summary = true }
 opt.on('-t', '--transactions'){ |b| print_transactions = true }
+opt.on('-o', '--old'){ |b| old_mode = true }
 
 values = []
 opt.order!{ |v| values << v }
@@ -323,7 +329,12 @@ end
 
 if howm_dir then 
   dir_scanner(howm_dir, howm_suffix) do |path|
-    File.open(path){ |file| file.each{|line| book_reader.parse_line(line)}}
+    File.open(path){ |file| file.each{|line| 
+        if old_mode then
+          book_reader.parse_old_line(line)
+        else
+          book_reader.parse_line(line)
+        end}}
   end
 end
 
