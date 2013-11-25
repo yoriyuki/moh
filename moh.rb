@@ -1,22 +1,37 @@
 require 'date'
-require 'rubygems'
-require 'when_exe'
-include When
-require 'csv'
 require 'optparse'
 
 class Transaction
-   include Comparable
-  private
-  attr_writer :date, :target, :sort, :amount, :comment
-  public 
-  attr_reader :date, :target, :sort, :amount, :comment
+  include Comparable
+  @@pool = []
+  def Transaction.each
+    @@pool.each { |t| yield t }
+  end
 
-  def initialize(date, target, amount, comment)
+  def Transaction.clear
+    @@pool = []
+  end
+
+  private
+  #amount is plus when the money moves from [source] to [target]
+  attr_writer :date, :source, :target, :sort, :amount, :comment 
+  public 
+  attr_reader :date, :source, :target, :sort, :amount, :comment
+
+  # amount > 0
+  def initialize(date, source, target, amount, comment)
     self.date = date
-    self.target = target
-    self.amount = amount
     self.comment = comment
+    if amount > 0 then
+      self.source = source
+      self.target = target
+      self.amount = amount
+    elsif amount < 0 then
+      self.source = target
+      self.target = source
+      self.amount = -amount
+    end
+      @@pool << self
   end
 
   def <=>(other)
@@ -29,15 +44,32 @@ class Transaction
   def is_in_dates(date1, date2)
     (not date1 or date >= date1) && (not date2 or date <= date2)
   end
+
+  def from_to(source, target)
+    
+  end
 end
+
+def initial_of(path1, path2) 
+  if path1 == [] then 
+    return true 
+  elsif path2 == [] then
+    return false
+  elsif path1[0] == path2[0] then
+    return initial_of(path1[1..-1], path2[1..-1])
+  else
+    return false
+  end
+end
+
 
 class Book
   include Comparable
   protected
   attr_reader :parent, :children
-  attr_writer :name, :children, :transactions, :parent
+  attr_writer :name, :children, :parent
   public
-  attr_reader :name, :transactions
+  attr_reader :name
 
   def add_child(book)
     if self.children then 
@@ -57,7 +89,6 @@ class Book
 
   def initialize(name, book = nil)
     self.name = name
-    self.transactions = []
     if book then book.add_child(self) end
     self.parent = book
   end
@@ -68,6 +99,10 @@ class Book
     else 
       self.name.length == 0 ? [] : [self.name]
     end
+  end
+
+  def fqdn
+    full_path.inject{|s, n| s + ':' + n}
   end
 
   def get_grandchild(path, create = false)
@@ -85,40 +120,34 @@ class Book
     full_path <=> other.full_path
   end
 
-  def add_transaction(transaction)
-    transactions << transaction    
+  def is_contained(book)
+    initial_of(book.full_path, self.full_path)
   end
 
   def debit_sum
-    if children then
-      sum = children.inject(0) do |sum, pair| 
-        sum + pair[1].debit_sum { |t| t.amount < 0 && (yield t) }
+    sum = 0
+    Transaction.each do |t|
+      if yield(t) & t.source.is_contained(self) then
+        sum += t.amount
       end
-    else
-      sum = 0
     end
-
-    filtered = transactions.find_all { |t| t.amount < 0 && (yield t) }
-    return filtered.inject(sum) { |sum, t| sum - t.amount}
+    return sum
   end
 
   def credit_sum
-    if children then
-      sum = children.inject(0) do |sum, pair| 
-        sum + pair[1].credit_sum { |t| t.amount > 0 && (yield t) }
+    sum = 0
+    Transaction.each do |t|
+      if yield(t) & t.target.is_contained(self) then
+        sum += t.amount
       end
-    else
-      sum = 0
     end
-
-    filtered = transactions.find_all { |t| t.amount > 0 && (yield t) }
-    return filtered.inject(sum) { |sum, t| sum + t.amount}
+    return sum
   end
 
   def balance(date=nil)
     debit_sum = debit_sum{|t| t.is_in_dates(nil, date)}
     credit_sum = credit_sum {|t| t.is_in_dates(nil, date)}
-    debit_sum - credit_sum    
+    credit_sum - debit_sum
   end
 end
 
@@ -126,9 +155,6 @@ end
 
 ##Input
 LINE_GENERIC = /^\[(\d{4}-\d{2}-\d{2})\]\$\s+(\S+)\s+(\S+)\s+(.*\S?)\s+(\d+)\s*$/
-LINE_OLD_GENERIC = /^\[(\d{4}-\d{2}-\d{2})\]\$\s+(\S+)\s+->\s+(\S+)\s+(\S*)\s+(.*\S?)\s+(\d+)\s*$/
-LINE_OLD_EXPENSE = /^\[(\d{4}-\d{2}-\d{2})\]\$\s+(\S+)\s+(.*\S?)\s+(\d+)\s*$/
-LINE_OLD_INCOME = /^\[(\d{4}-\d{2}-\d{2})\]\$\$\s+(\S+)\s+(.*\S?)\s+(\d+)\s*$/
 LINE_BALANCE = /^\[(\d{4}-\d{2}-\d{2})\]\$=\s+(\S+)\s+(-?\d+)\s*$/
 
 class BookReader
@@ -148,12 +174,7 @@ class BookReader
       book1 = self.root_book.get_grandchild(path1, true)
       book2 = self.root_book.get_grandchild(path2, true)
       
-      t1 = Transaction.new(date, book2, amount, comment)
-      t2 = Transaction.new(date, book1, -amount, comment)
-      
-      book1.add_transaction(t1)
-      book2.add_transaction(t2)
-
+      Transaction.new(date, book1, book2, amount, comment)
       true
       
       rescue ArgumentError
@@ -189,62 +210,12 @@ class BookReader
     end
   end
 
-  def parse_line_old_generic(line)
-    md = LINE_OLD_GENERIC.match(line)
-    if md then
-      target = if md[4] == "" then [md[3]] else [md[3], md[4]] end
-      add_line(md[1], [md[2]], target, md[5], md[6].to_i)
-    else
-      false
-    end
-  end
-
-  def parse_line_old_expense(line)
-    md = LINE_OLD_EXPENSE.match(line)
-    if md then
-      add_line(md[1], ['Wallet'], ['Expense', md[2]], md[3], md[4].to_i)
-    else
-      false
-    end
-  end
-
-  def parse_line_old_income(line)
-    md = LINE_OLD_INCOME.match(line)
-    if md then
-      add_line(md[1], ['Income', md[2]], ['Wallet'], md[3], md[4].to_i)
-    else
-      false
-    end
-  end
-
   def parse_line_set_balance(line)
     md = LINE_BALANCE.match(line)
     if md then
       set_balance(md[1], md[2].split(':'), md[3].to_i)
     else
       false
-    end
-  end
-
-  def parse_SMBC_line(line)
-    columns = CSV.parse_line(line)
-    if columns[0] == nil then return end
-
-    date_string = (Calendar('Gregorian')  ^ when?(columns[0])).to_s
-
-    if columns[1] == nil && columns[2].to_i > 0 then
-      add_line(date_string, ['Income', 'unknown'], ['SMBC'], columns[3], columns[2].to_i)
-    elsif columns[1].to_i > 0
-      add_line(date_string, ['SMBC'], ['Expense', 'unknown'], columns[3], columns[1].to_i)
-    end
-    false
-  end
-
-  def parse_SMBCVISA_line(line)
-    columns = CSV.parse_line(line)
-
-    if columns[2].to_i != 0 then
-      add_line(columns[0], ['SMBC_VISA'], ['Expense', 'unknown'], columns[1], columns[2].to_i)
     end
   end
 
@@ -268,13 +239,8 @@ class BookWriter
   protected
   attr_writer :book
 
-  def fqdn(book = nil)
-    if not book then book = self.book end
-    book.full_path.inject{|s, n| s + ':' + n}
-  end
-
   def print_transaction(t)
-    puts "[#{t.date.to_s}]$\t#{fqdn}\t#{fqdn(t.target)}\t#{t.comment}\t#{t.amount.to_s}"
+    puts "[#{t.date.to_s}]$\t#{t.source.fqdn}\t#{t.target.fqdn}\t#{t.comment}\t#{t.amount.to_s}"
   end
 
   public
@@ -285,20 +251,47 @@ class BookWriter
   end
 
   def print_summary(date1, date2)
-    debit_sum = book.debit_sum{|t| t.is_in_dates(date1, date2)}
-    credit_sum = book.credit_sum {|t| t.is_in_dates(date1, date2)}
-    puts "#{fqdn}\t#{credit_sum}\t#{debit_sum}\t#{debit_sum - credit_sum}"
+    debit = 0
+    Transaction.each do |t|
+      if 
+          t.is_in_dates(date1, date2)    \
+        and t.source.is_contained(book)
+      then
+        debit += t.amount
+      end
+    end
+    credit = 0
+    Transaction.each do |t|
+      if 
+          t.is_in_dates(date1, date2)    \
+        and t.target.is_contained(book)
+      then
+        credit += t.amount
+      end
+    end
+    if credit != 0 or debit != 0 then
+      puts "#{book.fqdn}\t#{credit}\t#{debit}\t#{credit - debit}"
+    end
     book.get_children.sort.each{|b| BookWriter.new(b).print_summary(date1, date2)}
   end
 
   def print_transactions(date1=nil, date2=nil)
-    transactions = self.book.transactions.find_all{|t| t.is_in_dates(date1, date2)}
+    transactions = []
+    Transaction.each do |t|
+      if 
+          t.is_in_dates(date1, date2)    \
+        and t.source.is_contained(book)
+      then
+        transactions << t
+      end
+    end
     transactions.sort.each{|t| print_transaction(t)}
-    self.book.get_children.sort.each{|b| BookWriter.new(b).print_transactions(date1, date2)}
   end
 end
 
+
 ## Main
+if $0 == __FILE__ then
 puts 'moh -- simple, commandline-based accounting software'
 puts '(C) 2012, 2013: Yoriyuki Yamagata'
 puts 'See LICENSE.txt for the licence.'
@@ -306,19 +299,14 @@ opt = OptionParser.new
 book_reader = BookReader.new
 howm_dir = nil
 howm_suffix = 'howm'
-smbc_dir = nil
-smbc_visa_dir = nil
 print_summary = false
 print_transactions = false
-old_mode = false
+Version = "0.2.0"
 
 opt.on('-d [dir]'){|dir| howm_dir = dir}
 opt.on('--howm_suffix=[suffix]'){ |suffix| howm_suffix=suffix }
-opt.on('--smbc_dir=[dir]'){|dir| smbc_dir = dir}
-opt.on('--smbc_visa_dir=[dir]'){ |dir| smbc_visa_dir = dir }
 opt.on('-s', '--summary'){ |b| print_summary = true }
 opt.on('-t', '--transactions'){ |b| print_transactions = true }
-opt.on('-o', '--old'){ |b| old_mode = true }
 
 values = []
 opt.order!{ |v| values << v }
@@ -330,33 +318,15 @@ end
 if howm_dir then 
   dir_scanner(howm_dir, howm_suffix) do |path|
     File.open(path){ |file| file.each{|line| 
-        if old_mode then
-          book_reader.parse_old_line(line)
-        else
           book_reader.parse_line(line)
-        end}}
+        }}
   end
 end
 
-if smbc_dir then
-  dir_scanner(smbc_dir, 'csv') do |path|
-    File.open(path) do |file|
-      file.readline
-      file.each{ |line| book_reader.parse_SMBC_line(line)}
-    end
-  end
+if values.length == 3 then
+  book = book_reader.root_book.get_grandchild(values[0].split(':'))
+  book_writer = BookWriter.new(book)
 end
-
-if smbc_visa_dir then
-  dir_scanner(smbc_visa_dir, 'csv') do |path|
-    File.open(path) do |file|
-      file.readline
-      file.each{ |line| book_reader.parse_SMBCVISA_line(line)}
-    end
-  end
-end
-
-book_writer = BookWriter.new(book_reader.root_book.get_grandchild(values[0].split(':')))
 
 if print_summary then
   puts '*Summary'
@@ -368,3 +338,4 @@ if print_transactions then
   book_writer.print_transactions(Date.parse(values[1]), Date.parse(values[2]))
 end
 
+end
