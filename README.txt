@@ -1,5 +1,5 @@
 moh - a simple and command line based accounting software
-Copyright (C) 2012  Yoriyuki Yamagata
+Copyright (C) 2012, 2013  Yoriyuki Yamagata
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -21,9 +21,6 @@ You can contact the author by email yoriyuki.y@gmail.com
 The installation is easy.
 
 1. First, install ruby.  moh was developed using ruby 1.8.7, so if you are using Mac OS X 10.8, you do not need to do anything.
-
-2. Next, install when_exe from ruby gem.
-$ sudo gem install when_exe
 
 2. Put moh.rb somewhere.  
 
@@ -72,11 +69,6 @@ If you omit -d, the current directory is assumed.  You can change the suffix of 
 
 The default behavior is to search *.howm files.  But you can change the suffix of files which contain financial data.
 $ ruby moh.rb -d XXX --howm_suffix=txt -s Wallet 20120101 20121231
-
-moh also supports csv files from Mitsui Sumitomo Bank
-$ ruby moh.rb --smbc_dir=XXX -s -t Wallet 20120101 20121231
-and Mitsui Sumitomo VISA card.
-$ ruby moh.rb --smbc_visa_dir XXX -s Wallet 20120101 20121231
 
 * Future plan
 
