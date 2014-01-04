@@ -154,7 +154,7 @@ end
 #IO
 
 ##Input
-LINE_GENERIC = /^\[(\d{4}-\d{2}-\d{2})\]\$\s+(\S+)\s+(\S+)\s+(.*\S?)\s+(\d+)\s*$/
+LINE_GENERIC = /^\[(\d{4}-\d{2}-\d{2})\]\$\s+(\S+)\s+(\S+)\s+(.*)\s+(\d+)\s*$/
 LINE_BALANCE = /^\[(\d{4}-\d{2}-\d{2})\]\$=\s+(\S+)\s+(-?\d+)\s*$/
 
 class BookReader
