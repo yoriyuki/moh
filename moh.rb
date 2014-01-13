@@ -1,3 +1,5 @@
+# coding: utf-8
+
 require 'date'
 require 'optparse'
 
@@ -45,9 +47,6 @@ class Transaction
     (not date1 or date >= date1) && (not date2 or date <= date2)
   end
 
-  def from_to(source, target)
-    
-  end
 end
 
 def initial_of(path1, path2) 
@@ -65,7 +64,7 @@ end
 
 class Book
   include Comparable
-  protected
+  public
   attr_reader :parent, :children
   attr_writer :name, :children, :parent
   public
@@ -173,7 +172,6 @@ class BookReader
 
       book1 = self.root_book.get_grandchild(path1, true)
       book2 = self.root_book.get_grandchild(path2, true)
-      
       Transaction.new(date, book1, book2, amount, comment)
       true
       
@@ -225,12 +223,6 @@ class BookReader
     else return end
   end
 
-  def parse_old_line(line)
-    if parse_line_old_generic(line) then return 
-    elsif parse_line_old_income(line) then return
-    elsif parse_line_old_expense(line) then return
-    else return end
-  end
 end
 
 ##Output
@@ -293,7 +285,7 @@ end
 ## Main
 if $0 == __FILE__ then
 puts 'moh -- simple, commandline-based accounting software'
-puts '(C) 2012, 2013: Yoriyuki Yamagata'
+puts '(C) 2012, 2013, 2014: Yoriyuki Yamagata'
 puts 'See LICENSE.txt for the licence.'
 opt = OptionParser.new
 book_reader = BookReader.new
@@ -318,13 +310,16 @@ end
 if howm_dir then 
   dir_scanner(howm_dir, howm_suffix) do |path|
     File.open(path){ |file| file.each{|line| 
-          book_reader.parse_line(line)
+        line.force_encoding('ascii-8bit')
+        book_reader.parse_line(line)
         }}
   end
 end
 
 if values.length == 3 then
-  book = book_reader.root_book.get_grandchild(values[0].split(':'))
+  bookname = values[0].dup
+  bookname.force_encoding('ascii-8bit')
+  book = book_reader.root_book.get_grandchild(bookname.split(':'))
   book_writer = BookWriter.new(book)
 end
 
