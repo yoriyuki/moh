@@ -33,6 +33,7 @@ class Transaction
       self.target = source
       self.amount = -amount
     end
+    if not self.source then p amount end 
       @@pool << self
   end
 
@@ -153,8 +154,7 @@ end
 #IO
 
 ##Input
-LINE_GENERIC = /^\[(\d{4}-\d{2}-\d{2})\]\$\s+(\S+)\s+(\S+)\s+(.*)\s+(\d+)\s*$/
-LINE_BALANCE = /^\[(\d{4}-\d{2}-\d{2})\]\$=\s+(\S+)\s+(-?\d+)\s*$/
+LINE_START = /^\[(\d{4}-\d{2}-\d{2})\]\$\s+/
 
 class BookReader
   protected
@@ -166,13 +166,15 @@ class BookReader
     self.root_book = Book.new('')
   end
 
-  def add_line(date_string, path1, path2, comment, amount)
+  def add_line(date_string, path1, path2, amount)
     begin
       date = Date.parse(date_string)
 
       book1 = self.root_book.get_grandchild(path1, true)
       book2 = self.root_book.get_grandchild(path2, true)
-      Transaction.new(date, book1, book2, amount, comment)
+      if not amount == 0 then
+        t = Transaction.new(date, book1, book2, amount, "")
+      end
       true
       
       rescue ArgumentError
@@ -180,49 +182,18 @@ class BookReader
       end
     end
 
-  def set_balance(date_string, path, amount)
-    begin
-      date = Date.parse(date_string)
-      rescue ArgumentError
-      return false
-    end
-    
-    book = self.root_book.get_grandchild(path, true)
-    diff = amount - book.balance(date)
-
-    if diff > 0 then
-      add_line(date_string, ['Income', 'Unknown'], path, 'Unknown', diff)
-    elsif diff < 0 then
-      add_line(date_string, path, ['Expense', 'Unknown'], 'Unknown', -diff)
-    end
-
-    true
-  end
-
-  def parse_line_generic(line)
-    md = LINE_GENERIC.match(line)
-    if md then 
-      add_line(md[1], md[2].split(':'), md[3].split(':'), md[4], md[5].to_i)
-    else
-      false
-    end
-  end
-
-  def parse_line_set_balance(line)
-    md = LINE_BALANCE.match(line)
-    if md then
-      set_balance(md[1], md[2].split(':'), md[3].to_i)
-    else
-      false
-    end
-  end
-
   def parse_line(line) 
-    if parse_line_generic(line) then return
-    elsif parse_line_set_balance(line) then return
-    else return end
+    md = LINE_START.match(line)
+    if md then
+      entries = line.chomp.split(/\s+/)
+      if entries.length >= 4 then 
+        add_line(md[1], 
+                 entries[1].split(':'),
+                 entries[2].split(':'),
+                 entries[-1].to_i)
+      end
+    end
   end
-
 end
 
 ##Output
