@@ -243,7 +243,7 @@ class BookWriter
     Transaction.each do |t|
       if 
           t.is_in_dates(date1, date2)    \
-        and t.source.is_contained(book)
+        and (t.source.is_contained(book) or t.target.is_contained(book))
       then
         transactions << t
       end
