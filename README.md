@@ -1,5 +1,5 @@
 moh - a simple and command line based accounting software
-Copyright (C) 2012, 2013, 2014  Yoriyuki Yamagata
+Copyright (C) 2012, 2013, 2014, 2015  Yoriyuki Yamagata
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
