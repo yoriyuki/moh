@@ -16,22 +16,22 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 You can contact the author by email yoriyuki.y@gmail.com
 
-* How to install
+# How to install
 
 The installation is easy.
 
-1. First, install ruby.  moh was developed using ruby 1.8.7, so if you are using Mac OS X 10.8, you do not need to do anything.
+1. First, install ruby.  moh works the builtin ruby of Mac OS X Yosemite.  So, If you use MacOS X Yosemite, you do not need to do anything
 
 2. Put moh.rb somewhere.  
 
 That's all.
 
-* Usage
+# Usage
 
-** Preparation of Financial Data
+## Preparation of Financial Data
 
 To use moh, first you need to prepare your financial data.  moh does
-not require the specific format for them.  You only need to put 
+not require the specific format for them.  You only need to put
 lines as follow to some plain text file in a specified directory or
 its subdirectories.
 
@@ -47,31 +47,46 @@ Accounts can form hierarchies.  For example, you can write Expense:Lunch to indi
 
 Transactions of Expense:Lunch are counted as those of Expense and Expense:Lunch simultaneously.
 
-If you know how much money in an account, you can reset the balance of the account.
-
-[2013-08-01]$= Wallet 6000
-
-This set the balance of Wallet 6000.  If this is not equal to the balance calculated, moh automatically inserts the transaction to Expense:Unknown or Income:Unknown.
-
-OCaml version of moh uses different formats.  They are supported but using them are strongly discouraged.
-
 moh ignores any line which does not fit this format.
 
-** Generate a summary
+Beside plain text, moh support DayOne dairy app.  Just put your financial data in the same format into your diary.  
+
+## Generate a summary
 
 Then, you can create a report by invoking moh.  If you put the data
 into the directory XXX or its subdirectories, you can obtain the
 annual report of Wallet by
- 
+```shell
 $ ruby moh.rb -d XXX -s Wallet 20120101 20121231
+```
+(In the examples, moh.rb is located in the current directory.  If not, replace moh.rb to the path of moh.rb)
 
-If you omit -d, the current directory is assumed.  You can change the suffix of files which moh searches.  If you use -t instead of -s, moh outputs all transaction between given dates.
+You can specify multiple directories.
+```shell
+$ ruby moh.rb -d XXX -d YYY -s Wallet 20120101 20121231
+```
 
-The default behavior is to search *.howm files.  But you can change the suffix of files which contain financial data.
-$ ruby moh.rb -d XXX --howm_suffix=txt -s Wallet 20120101 20121231
+However, you need at least one -d option to specify the directory.  You can change the suffix of files which moh searches.  If you use -t instead of -s, moh outputs all transaction between given dates.
 
-* Future plan
+The default behavior is to search `*.txt` files.  But you can change the suffix of files which contain financial data.
+```shell
+$ ruby moh.rb -d XXX --txt_suffix=text -s Wallet 20120101 20121231
+```
 
-- Different currency and other price changing materials.
+In addition, moh supports DayOne diary application.  Specify the location of DayOne `entries` directory after `--dayone=` option.
+```shell
+$ ruby moh.rb --dayone=XXX -s Wallet 20120101 20121231
+```
+
+You can mix plain text and dayone entries.
+```shell
+$ ruby moh.rb -d XXX -dayone=YYY -s Wallet 20120101 20121231
+```
+
+The default behavior of summary mode prints out summations of all hierarchies of entries.  You can change this behavior by specifying `-D` option.  For example,
+```shell
+$ ruby moh.rb -d XXX -dayone=YYY -s -D 2 Wallet 20120101 20121231
+```
+only shows the summaries of one and second levels of nested accounts.
 
 Enjoy!
